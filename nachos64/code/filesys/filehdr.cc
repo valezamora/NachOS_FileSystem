@@ -195,7 +195,29 @@ FileHeader::WriteBack(int sector)
 int
 FileHeader::ByteToSector(int offset)
 {
-    return(dataSectors[offset / SectorSize]);
+	int sectorNum = offset / SectorSize;
+	
+	if( sectorNum <= NumDirect )
+    	return(dataSectors[offset / SectorSize]);
+    else{
+    	int sigSec = sigPosSector;					// Posición del siguiente sector de índices
+    	int data[SectorSize/sizeof(int)];						// Vector para leer sectores
+    	int secBuscado = sectorNum % NumDirect2;	// El sector deseado
+    	
+    	sectorNum -= NumDirect;						// Contador para saber si falta o no recorrer otro sector de índices
+    	
+    	do{
+    		synchDisk->ReadSector( sigSec, data );	// Se lee el sector
+    		sectorNum -= NumDirect2;				// Se resta la cantidad de índices de este sector
+    		
+    		// Se calcula el índice del siguiente sector de índices en caso de ser necesario
+    		sigSec = data[ SectorSize - sizeof(int) ];	
+    	}
+    	while( sectorNum > 0 && sigSec != -1 ); // Asumiendo que el -1 sea el valor de un final lógico
+    	
+    	// Se retorn el índice del sector deseado
+    	return data[secBuscado];
+    }
 }
 
 //----------------------------------------------------------------------
