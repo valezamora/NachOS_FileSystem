@@ -58,7 +58,7 @@ class FileHeader {
 
     void Print();			// Print the contents of the file.
 
-	bool AddLength(int n);
+	bool AddLength(int n, int posicion);
   private:
     int numBytes;			// Number of bytes in the file
     int numSectors;			// Number of data sectors in the file

@@ -199,9 +199,10 @@ FileSystem::Create(const char *name, int initialSize=0)
             success = false;	// no space in directory
 	else {
     	    hdr = new FileHeader;
-	    if (!hdr->Allocate(freeMap, initialSize))
+	    if (!hdr->Allocate(freeMap, initialSize)){
             	success = false;	// no space on disk for data
-	    else {	
+            	printf("Falla allocate ");
+	   } else {	
 	    	success = true;
 		// everthing worked, flush all changes back to disk
     	    	hdr->WriteBack(sector); 		

@@ -146,7 +146,7 @@ OpenFile::ReadAt(char *into, int numBytes, int position)
 int
 OpenFile::WriteAt(const char *from, int numBytes, int position)
 {
-    if(hdr->AddLength(numBytes)){		// se agrega esta linea para que los archivos sean de tamano variable
+    if(hdr->AddLength(numBytes, posicion)){		// se agrega esta linea para que los archivos sean de tamano variable
 		int fileLength = hdr->FileLength();
 		int i, firstSector, lastSector, numSectors;
 		bool firstAligned, lastAligned;
@@ -156,11 +156,7 @@ OpenFile::WriteAt(const char *from, int numBytes, int position)
 
 		if ((numBytes <= 0) || (position >= fileLength))
 		return 0;				// check request
-		if ((position + numBytes) > fileLength)
-		numBytes = fileLength - position;
-		DEBUG('f', "Writing %d bytes at %d, from file of length %d.\n", 	
-				numBytes, position, fileLength);
-
+		
 		firstSector = divRoundDown(position, SectorSize);
 		lastSector = divRoundDown(position + numBytes - 1, SectorSize);
 		numSectors = 1 + lastSector - firstSector;
@@ -181,6 +177,7 @@ OpenFile::WriteAt(const char *from, int numBytes, int position)
 		bcopy(from, &buf[position - (firstSector * SectorSize)], numBytes);
 
 	// write modified sectors back
+	printf("Antes del for raro\n" );
 		for (i = firstSector; i <= lastSector; i++)	
 		    synchDisk->WriteSector(hdr->ByteToSector(i * SectorSize), 
 						&buf[(i - firstSector) * SectorSize]);
@@ -188,6 +185,7 @@ OpenFile::WriteAt(const char *from, int numBytes, int position)
 	
 		//fileLock->Release();
     }else{
+    printf("NO CABEEEEEE HELP\n" );
     	numBytes = -1;
     }
     return numBytes;
