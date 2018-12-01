@@ -100,10 +100,12 @@ FileHeader::Allocate(BitMap *freeMap, int fileSize)
 	}
 	
     return true;*/
-    
+    printf("prueba\n");
     numBytes = 0;
     numSectors  = 0;
     siguienteBloque = -1;
+    
+    return true;
 }
 
 //----------------------------------------------------------------------
@@ -116,7 +118,7 @@ FileHeader::Allocate(BitMap *freeMap, int fileSize)
 void 
 FileHeader::Deallocate(BitMap *freeMap)
 {
-	int i = 0;
+	unsigned int i = 0;
 	int contadorSectores = 0;
 	if(numSectors < NumDirect){
 		//no hay bloques extra de punteros
@@ -204,8 +206,8 @@ FileHeader::ByteToSector(int offset)
 	if( sectorNum <= NumDirect )
     	return(dataSectors[offset / SectorSize]);
     else{
-    	int sigSec = sigPosSector;					// Posición del siguiente sector de índices
-    	int data[SectorSize/sizeof(int)];						// Vector para leer sectores
+    	int sigSec = siguienteBloque;					// Posición del siguiente sector de índices
+    	int data[SectorSize/sizeof(int)];			// Vector para leer sectores
     	int secBuscado = sectorNum % NumDirect2;	// El sector deseado
     	
     	sectorNum -= NumDirect;						// Contador para saber si falta o no recorrer otro sector de índices
@@ -265,7 +267,6 @@ FileHeader::Print()
 			}
     	}else{
     		//imprime de otro sector
-    		s
     		
     	}
     delete [] data;
@@ -286,6 +287,10 @@ bool FileHeader::AddLength(int n)
 	int bytesUltimoSector = (numBytes - n) % SectorSize; // Cantidad bytes utilizados en el último índice
 
 	if( (bytesUltimoSector + n) > SectorSize ){ // Voy a ocupar un nuevo sector
+		OpenFile* bm = new 	OpenFile(0);				// Genera un BitMap que indica cuales bloques de 
+    	BitMap *freeMap = new BitMap(NumSectors);		// memoria están disponible, Lo carga del archivo de filesys
+        freeMap->FetchFrom(bm);		
+	
     	int nuevosSectores = divRoundUp(numBytes, SectorSize) - numSectors; // Cantidad de nuevos sectores requeridos
     	int capacidadTotSec = NumDirect; // Capacidad total de sectores que tengo para indízan
     	int indBloque = siguienteBloque; // Nos indica el índice del nuevo bloque de índices
@@ -293,7 +298,7 @@ bool FileHeader::AddLength(int n)
     	
     	// Recorre toda la lista de índices contando cuantos puede almacenar
     	while( indBloque != -1 ){
-    		ReadAt( (char *)data, SectorSize, indBloque * SectorSize );
+    		synchDisk->ReadSector( indBloque, (char *)data );	// Se lee el sector
     		capacidadTotSec += NumDirect2;
     		indBloque = data[NumDirect2];
     	}
@@ -321,7 +326,7 @@ bool FileHeader::AddLength(int n)
     			else{ // Necesitamos guardarlo en el siguiente bloque
     				// Busca un nuevo bloque para índices y guarda un nuevo índice
     				siguienteBloque = freeMap->Find();
-    				ReadAt( (char *)data, SectorSize, siguienteBloque * SectorSize );
+    				synchDisk->ReadSector( siguienteBloque, (char *)data );	// Se lee el sector
     				data[0] = freeMap->Find();
     			}
     		}
@@ -333,12 +338,18 @@ bool FileHeader::AddLength(int n)
     			else{
     				// Busca un nuevo bloque para índices y guarda un nuevo índice
     				data[NumDirect2] = freeMap->Find();
-    				ReadAt( (char *)data, SectorSize, data[NumDirect2] * SectorSize );
+    				synchDisk->ReadSector( data[NumDirect2], (char *)data );	// Se lee el sector
     				data[0] = freeMap->Find();
     			}
     		}
     		++numSectors;
     	}
+    	
+    	
+
+		freeMap->WriteBack(bm);							// Escribe ese BitMap en disco para actualizar 
+    	delete bm;										// los sectores disponibles, luego lo borra
+    	delete freeMap;									
     }
     
     fileLock->Release();

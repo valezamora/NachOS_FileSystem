@@ -146,13 +146,13 @@ OpenFile::ReadAt(char *into, int numBytes, int position)
 int
 OpenFile::WriteAt(const char *from, int numBytes, int position)
 {
-    if(hdr->AddLength(numBytes)){		// se agrega esta linea para que los archivos sean de tamano variable
+    if(hdr->AddLength(numBytes - hdr->FileLength())){		// se agrega esta linea para que los archivos sean de tamano variable
 		int fileLength = hdr->FileLength();
 		int i, firstSector, lastSector, numSectors;
 		bool firstAligned, lastAligned;
 		char *buf;
 		
-		//fileLock->Acquire();
+		fileLock->Acquire();
 
 		if ((numBytes <= 0) || (position >= fileLength))
 		return 0;				// check request
@@ -186,7 +186,7 @@ OpenFile::WriteAt(const char *from, int numBytes, int position)
 						&buf[(i - firstSector) * SectorSize]);
 		delete [] buf;
 	
-		//fileLock->Release();
+		fileLock->Release();
     }else{
     	numBytes = -1;
     }
