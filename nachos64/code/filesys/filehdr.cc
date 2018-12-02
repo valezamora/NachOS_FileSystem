@@ -41,7 +41,7 @@
 bool
 FileHeader::Allocate(BitMap *freeMap, int fileSize)
 { 
-    numBytes = fileSize;
+    /* = fileSize;
     numSectors  = divRoundUp(fileSize, SectorSize);	//cantidad de sectores requeridos para almacenar el contenido del archivo
 printf("cantidad de sectores: %d\n", numSectors);		
 	
@@ -116,8 +116,14 @@ printf("Bloques extra: %d\n", numSectorsExtra);
 		
 	}
 	printf("Termino allocate\n" );		
-	
+
+*/
+
+	numSectors = 0;
+	numBytes = 0;
+	siguienteBloque = -1;
     return true;
+
 }
 
 //----------------------------------------------------------------------
@@ -217,15 +223,15 @@ FileHeader::WriteBack(int sector)
 int
 FileHeader::ByteToSector(int offset)
 {
-    printf("inicia: byte to sector\n" );
+
 	int sectorNum = offset / SectorSize;
 	
-	if( sectorNum <= NumDirect ){
-    	printf("final: byte to sector\n" );
-    	return(dataSectors[offset / SectorSize]);
+	if( sectorNum < NumDirect ){
+    	return(dataSectors[sectorNum]);
     }else{
+    //buscar sector donde esta almacenado en otro bloque
     	int sigSec = siguienteBloque;					// Posición del siguiente sector de índices
-    	int data[SectorSize/sizeof(int)];						// Vector para leer sectores
+    	int data[NumDirect2];						// Vector para leer sectores
     	int secBuscado = sectorNum % NumDirect2;	// El sector deseado
     	
     	sectorNum -= NumDirect;						// Contador para saber si falta o no recorrer otro sector de índices
@@ -239,7 +245,6 @@ FileHeader::ByteToSector(int offset)
     	}
     	while( sectorNum > 0 && sigSec != -1 ); // Asumiendo que el -1 sea el valor de un final lógico
 
-		printf("final: byte to sector\n" );
     	
     	// Se retorn el índice del sector deseado
     	return data[secBuscado];
@@ -299,78 +304,90 @@ FileHeader::Print()
 * Agrega el espacio requerido para que el tamano del archivo sea variable.	
 */
 
-bool FileHeader::AddLength(int n, int posicion)
+bool FileHeader::AddLength(int n)
 {
 	printf("inicio: add length\n" );
 	bool result = true;
-	//add number of bytes
-    numBytes += n;
-    //if the file needs more sectors
-   	int newSectors = divRoundUp(numBytes, SectorSize) - numSectors;	//cantidad de sectores nuevos que necesita 
-    if(newSectors > 0){
-    //Lee el bitmap del sector 0
-    	fileLock->Acquire();
-    	OpenFile* bm = new 	OpenFile(0);
-    	BitMap *freeMap = new BitMap(NumSectors);
-        freeMap->FetchFrom(bm);	
-        
-        // nuevos sectores para almacenar punteros
-        int espacioLibre = NumDirect-numSectors;
-		int newBloques = divRoundUp((newSectors-espacioLibre), NumDirect2);
-        
-    	if (freeMap->NumClear() < (newSectors+newBloques)){
-    		numBytes -= n;
-    		result = false;		//no hay suficiente espacio
-    	}else{
-    		//si hay espacio
-    		
-			if(newSectors <= espacioLibre){	//cabe en el espacio del header
-				for (int i = 0; i < newSectors; i++){
-					dataSectors[numSectors+i] = freeMap->Find();	
-				}
-				numSectors = divRoundUp(numBytes, SectorSize);
-			}else{
-				// se necesitan mas bloques para almacenar punteros
-				//asigna los libres del file header
-				for (int i = 0; i < NumDirect; i++){
-					dataSectors[numSectors+i] = freeMap->Find();	
-				}
-				
-				//asigna siguiente bloque
-				siguienteBloque = freeMap->Find(); 	//asigna siguiente bloque del header
-		
-				// loop para asignar los demas bloques
-				int sigTemp = siguienteBloque;
-				int siguienteTemporal[NumDirect2+1];	//crear vector temporal para guardar a las posiciones del disco del bloque
-				int contBloque = 0;
-				int temporal = 0;
-				
-				for(int j = 0; j < newBloques; ++j){	//crea los bloques nuevos de punteros
-					while(contBloque < NumDirect2){		//llena los bloques de punteros
-						siguienteTemporal[contBloque] = freeMap->Find();				//guardar siguiente en siguiente bloque el puntero
-						++contBloque;
-					}
-					
-					contBloque = 0;
-					
-					//se necesita otro sector mas
-				 	if((j+1) < newBloques){
-				 		temporal = freeMap->Find();	
-				 		siguienteTemporal[NumDirect2] = temporal;		//asignar al ultimo del siguiente sector un nuevo sector
-				 	}else{
-				 		siguienteTemporal[NumDirect2] = -1;		//asignar al ultimo del siguiente sector un nuevo sector
-				 	}
-					
-					synchDisk->WriteSector(sigTemp, (char *)siguienteTemporal);				//escribe el sector en disco
-					sigTemp = temporal;
-				}
+	int i = 0;
+	
+   	fileLock->Acquire();
+	OpenFile* bm = new 	OpenFile(0);
+    BitMap *freeMap = new BitMap(NumSectors);
+    freeMap->FetchFrom(bm);	
+	
+	int sectoresRequeridosTotal = divRoundUp(numBytes+n, SectorSize);
+	if(sectoresRequeridosTotal < NumDirect){
+		// Caben en NumDirect sectores
+		// hay suficientes disponibles 
+		if (freeMap->NumClear() < sectoresRequeridosTotal-numSectors){
+			result = false;
+		}else{
+			for(i = numSectors; i < sectoresRequeridosTotal; ++i){
+			// asignar los sectores que faltan
+			dataSectors[i] = freeMap->Find();
 			}
-    	}
-    	
-    	delete bm;
-    	delete freeMap;  
-    	fileLock->Release();  	
-    } 
+			numBytes += n;
+			numSectors = sectoresRequeridosTotal;
+		}
+		
+	}else{
+		// archivo necesita mas sectores para almacenar punteros
+   	
+	   	// cantidad de sectores para almacenar punteros
+	   	int punteros = sectoresRequeridosTotal - NumDirect;
+   		int sectoresPunteros = divRoundUp(punteros,SectorSize);
+   		
+   		if(freeMap->NumClear() < (sectoresRequeridosTotal - numSectors + sectoresPunteros)){
+   			//no hay espacio
+   			result = false;
+   		}else{
+   			//SI HAY CAMPO
+   			
+   			// Asigna los que faltan del vector local
+   			for(i = numSectors; i < NumDirect; ++i){
+				dataSectors[i] = freeMap->Find();
+			}
+			
+			//asigna siguiente bloque de datos
+			siguienteBloque = freeMap->Find();
+			
+			FileBlock * bloquePunteros = new FileBlock();
+			
+			int bloqueTemp = siguienteBloque;
+			int contadorAsignados = 0;
+			int contadorInterno = 0;
+			int temporal = -1;
+			
+			for(i=0; i<sectoresPunteros; ++i){
+				bloquePunteros->FetchFrom(bloqueTemp);
+				contadorInterno= 0;
+				temporal = -1;
+				while(contadorAsignados < punteros && contadorInterno < NUM_PUNTEROS){
+					//faltan bloques por asignar
+					bloquePunteros->asignar(contadorInterno, freeMap->Find());
+					++contadorInterno;
+					++contadorAsignados;					
+				}
+				//siguiente bloque
+				if(i+1 < sectoresPunteros){
+					temporal = freeMap->Find();
+					//necesito otro
+				}
+				bloquePunteros->AsignarSiguiente(temporal);
+				bloquePunteros->WriteBack(bloqueTemp);
+				bloqueTemp = temporal;
+			}
+			numBytes += n;
+			numSectors = sectoresRequeridosTotal;
+   			delete bloquePunteros;
+   		}
+
+	}
+   	delete bm;
+	delete freeMap;  
+
+	fileLock->Release();  	
+     
     printf("final: add length\n" );
     return result; 
 }

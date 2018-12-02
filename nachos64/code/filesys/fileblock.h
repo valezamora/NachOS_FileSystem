@@ -11,17 +11,15 @@
 
 #include "copyright.h"
 
-#ifndef FILEHDR_H
-#define FILEHDR_H
+#ifndef FILEBLOCK_H
+#define FILEBLOCK_H
 
 #include "disk.h"
 #include "bitmap.h"
-#include "system.h"		
-#include "fileblock.h"
+#include "system.h"	
+#include "filehdr.h"	
 
-#define NumDirect	((SectorSize - 3 * sizeof(int)) / sizeof(int))		//se modifica para dejar espacio para el puntero al siguiente bloque.
-#define MaxFileSize	(NumDirect * SectorSize)
-#define NumDirect2	((SectorSize - 1 * sizeof(int)) / sizeof(int))		//para bloques secundarios de almacenamiento de punteros.
+#define NUM_PUNTEROS (SectorSize - sizeof(int))/sizeof(int)
 
 // The following class defines the Nachos "file header" (in UNIX terms,  
 // the "i-node"), describing where on disk to find all of the data in the file.
@@ -38,11 +36,10 @@
 // by allocating blocks for the file (if it is a new file), or by
 // reading it from disk.
 
-class FileHeader {
+class FileBlock {
   public:
-    bool Allocate(BitMap *bitMap, int fileSize);// Initialize a file header, 
-						//  including allocating space 
-						//  on disk for the file data
+	FileBlock();
+
     void Deallocate(BitMap *bitMap);  		// De-allocate this file's 
 						//  data blocks
 
@@ -54,18 +51,15 @@ class FileHeader {
 					// to the disk sector containing
 					// the byte
 
-    int FileLength();			// Return the length of the file 
-					// in bytes
+    void Print(int numBytes);			// Print the contents of the file.
 
-    void Print();			// Print the contents of the file.
-
-	bool AddLength(int n);
+	void AsignarSiguiente(int next);
+	
+	void asignar(int donde, int que);
   private:
-    int numBytes;			// Number of bytes in the file
-    int numSectors;			// Number of data sectors in the file
-    int dataSectors[NumDirect];		// Disk sector numbers for each data 
-					// block in the file
+
+    int dataSectors[NUM_PUNTEROS];		// Disk sector numbers for each data  block in the file
 	int siguienteBloque;
 };
 
-#endif // FILEHDR_H
+#endif // FILEBLOCK_H
