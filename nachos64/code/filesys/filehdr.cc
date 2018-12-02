@@ -316,58 +316,6 @@ bool FileHeader::AddLength(int n){
 	}else{
 		numSectors = 0;
 		numBytes = 0;
-	/*
-		// archivo necesita mas sectores para almacenar punteros
-   	
-	   	// cantidad de sectores para almacenar punteros
-	   	int punteros = sectoresRequeridosTotal - NumDirect;
-   		int sectoresPunteros = divRoundUp(punteros,SectorSize);
-   		
-   		if(freeMap->NumClear() < (sectoresRequeridosTotal - numSectors + sectoresPunteros)){
-   			//no hay espacio
-   			result = false;
-   		}else{
-   			//SI HAY CAMPO
-   			
-   			// Asigna los que faltan del vector local
-   			for(i = numSectors; i < NumDirect; ++i){
-				dataSectors[i] = freeMap->Find();
-			}
-			
-			//asigna siguiente bloque de datos
-			siguienteBloque = freeMap->Find();
-			
-			FileBlock * bloquePunteros = new FileBlock();
-			
-			int bloqueTemp = siguienteBloque;
-			int contadorAsignados = 0;
-			int contadorInterno = 0;
-			int temporal = -1;
-			
-			for(i=0; i<sectoresPunteros; ++i){
-				bloquePunteros->FetchFrom(bloqueTemp);
-				contadorInterno= 0;
-				temporal = -1;
-				while(contadorAsignados < punteros && contadorInterno < NUM_PUNTEROS){
-					//faltan bloques por asignar
-					bloquePunteros->asignar(contadorInterno, freeMap->Find());
-					++contadorInterno;
-					++contadorAsignados;					
-				}
-				//siguiente bloque
-				if(i+1 < sectoresPunteros){
-					temporal = freeMap->Find();
-					//necesito otro
-				}
-				bloquePunteros->AsignarSiguiente(temporal);
-				bloquePunteros->WriteBack(bloqueTemp);
-				bloqueTemp = temporal;
-			}
-			numBytes += n;
-			numSectors = sectoresRequeridosTotal;
-   			delete bloquePunteros;
-   		}
-*/
 	}
 	
    	delete bm;

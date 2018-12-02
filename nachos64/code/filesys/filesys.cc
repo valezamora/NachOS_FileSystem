@@ -231,7 +231,7 @@ FileSystem::Create(const char *name, int initialSize=0)
 OpenFile *
 FileSystem::Open(const char *name)
 { 
-    Directory *directory = new Directory(NumDirEntries);
+    Directory *	directory = new Directory(NumDirEntries);
     OpenFile *openFile = NULL;
     int sector;
 	//fileLock->Acquire();
