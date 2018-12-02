@@ -38,7 +38,7 @@
 
 class FileBlock {
   public:
-	FileBlock();
+	FileBlock();	
 
     void Deallocate(BitMap *bitMap);  		// De-allocate this file's 
 						//  data blocks
